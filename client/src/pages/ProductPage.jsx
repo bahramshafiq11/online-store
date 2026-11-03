@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api";
+import { useCart } from "../context/CartContext";
 
 export default function ProductPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [qty, setQty] = useState(1);
   const [error, setError] = useState("");
@@ -20,6 +23,11 @@ export default function ProductPage() {
 
   const inStock = product.countInStock > 0;
   const maxQty = Math.min(product.countInStock, 10);
+
+  const handleAddToCart = () => {
+    addToCart(product, qty);
+    navigate("/cart");
+  };
 
   return (
     <div>
@@ -47,7 +55,7 @@ export default function ProductPage() {
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-              <button className="btn" onClick={() => alert("Cart coming next!")}>
+              <button className="btn" onClick={handleAddToCart}>
                 Add to Cart
               </button>
             </div>
