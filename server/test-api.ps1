@@ -32,7 +32,11 @@ function CheckValue($name, $actual, $expected) {
 function Product($id) { return (Call GET "/products/$id").Data }
 
 Write-Host "`n--- Products ---"
-Check "List products" (Call GET "/products") 200
+$list = Call GET "/products"
+Check "List products" $list 200
+CheckValue "List has page info" ($null -ne $list.Data.pages) $true
+CheckValue "Limit of 2 returns 2 products" (Call GET "/products?limit=2").Data.products.Count 2
+CheckValue "Huge limit capped at 50" ((Call GET "/products?limit=99999").Data.products.Count -le 50) $true
 Check "Search products" (Call GET "/products?search=wire") 200
 Check "List categories" (Call GET "/products/categories") 200
 Check "Invalid product ID (should fail)" (Call GET "/products/abc") 400

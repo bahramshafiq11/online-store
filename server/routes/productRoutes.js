@@ -18,7 +18,7 @@ const updateRating = (product) => {
       : product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.numReviews;
 };
 
-// Get all products, with optional ?search= and ?category= (anyone)
+// Get products, with optional ?search=, ?category=, ?page=, ?limit= (anyone)
 router.get("/", async (req, res) => {
   const { search, category } = req.query;
   const filter = {};
@@ -30,12 +30,26 @@ router.get("/", async (req, res) => {
     filter.category = category;
   }
 
-  // Leave out the full reviews here to keep the list fast
-  const products = await Product.find(filter).select("-reviews").sort({ createdAt: -1 });
-  res.json(products);
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 8));
+
+  const total = await Product.countDocuments(filter);
+  const products = await Product.find(filter)
+    .select("-reviews")
+    .sort({ createdAt: -1, _id: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  res.json({
+    products,
+    page,
+    pages: Math.max(1, Math.ceil(total / limit)),
+    total,
+  });
 });
 
 // Get the list of categories (anyone)
+// Must be above "/:id", or Express would treat "categories" as a product ID
 router.get("/categories", async (req, res) => {
   const categories = await Product.distinct("category");
   res.json(categories.sort());

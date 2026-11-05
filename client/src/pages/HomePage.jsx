@@ -2,14 +2,18 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
 import Rating from "../components/Rating";
+import Pagination from "../components/Pagination";
 
 export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
   const category = searchParams.get("category") || "";
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
   const [searchInput, setSearchInput] = useState(search);
   const [products, setProducts] = useState([]);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -27,10 +31,13 @@ export default function HomePage() {
     const timer = setTimeout(() => {
       setSearchParams(
         (prev) => {
-          const next = new URLSearchParams(prev);
           const value = searchInput.trim();
+          if (value === (prev.get("search") || "")) return prev;
+
+          const next = new URLSearchParams(prev);
           if (value) next.set("search", value);
           else next.delete("search");
+          next.delete("page"); // new search starts at page 1
           return next;
         },
         { replace: true }
@@ -39,20 +46,23 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [searchInput, setSearchParams]);
 
-  // Fetch products whenever search or category changes
+  // Fetch products whenever search, category or page changes
   useEffect(() => {
     let ignore = false;
     setLoading(true);
     setError("");
 
-    const params = {};
+    const params = { page };
     if (search) params.search = search;
     if (category) params.category = category;
 
     api
       .get("/products", { params })
       .then((res) => {
-        if (!ignore) setProducts(res.data);
+        if (ignore) return;
+        setProducts(res.data.products);
+        setPages(res.data.pages);
+        setTotal(res.data.total);
       })
       .catch(() => {
         if (!ignore) setError("Could not load products. Is the backend running?");
@@ -64,7 +74,7 @@ export default function HomePage() {
     return () => {
       ignore = true;
     };
-  }, [search, category]);
+  }, [search, category, page]);
 
   const handleCategory = (e) => {
     const value = e.target.value;
@@ -72,8 +82,19 @@ export default function HomePage() {
       const next = new URLSearchParams(prev);
       if (value) next.set("category", value);
       else next.delete("category");
+      next.delete("page");
       return next;
     });
+  };
+
+  const changePage = (n) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (n > 1) next.set("page", n);
+      else next.delete("page");
+      return next;
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const clearFilters = () => {
@@ -115,11 +136,11 @@ export default function HomePage() {
         <p className="status">No products match your search.</p>
       ) : (
         <>
-          {filtering && (
-            <p className="muted result-count">
-              {products.length} product{products.length !== 1 && "s"} found
-            </p>
-          )}
+          <p className="muted result-count">
+            {total} product{total !== 1 && "s"}
+            {pages > 1 && ` · Page ${page} of ${pages}`}
+          </p>
+
           <div className="product-grid">
             {products.map((p) => (
               <Link to={`/product/${p._id}`} key={p._id} className="product-card">
@@ -140,6 +161,8 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
+
+          <Pagination page={page} pages={pages} onChange={changePage} />
         </>
       )}
     </div>
