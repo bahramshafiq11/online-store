@@ -20,6 +20,21 @@ app.use("/api/products", productRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 
+// Error handler: turns crashes into clear JSON messages
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  if (err.name === "ValidationError") {
+    const message = Object.values(err.errors).map((e) => e.message).join(", ");
+    return res.status(400).json({ message });
+  }
+  if (err.name === "CastError") {
+    return res.status(400).json({ message: "Invalid ID" });
+  }
+
+  res.status(500).json({ message: "Something went wrong on the server" });
+});
+
 const PORT = process.env.PORT || 5000;
 
 mongoose

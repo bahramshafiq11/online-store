@@ -21,6 +21,7 @@ export default function Navbar() {
         </Link>
         {user ? (
           <>
+            {user.isAdmin && <Link to="/admin/products">Admin</Link>}
             <Link to="/my-orders">My Orders</Link>
             <span>Hi, {user.name.split(" ")[0]}</span>
             <button className="link-btn" onClick={handleLogout}>Logout</button>
