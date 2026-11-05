@@ -2,10 +2,6 @@
 
 A full stack e-commerce store built with the **MERN stack** (MongoDB, Express, React, Node.js). Customers can browse, search, review, and buy products with Cash on Delivery or online card payments, and admins manage products and orders from a built-in dashboard.
 
-**Live demo:** _coming soon_
-
-![MyStore home page](docs/screenshots/home.png)
-
 ---
 
 ## Features
@@ -50,18 +46,6 @@ A full stack e-commerce store built with the **MERN stack** (MongoDB, Express, R
 | Images | Cloudinary, Multer |
 | Payments | Safepay (sandbox) |
 | Email | Nodemailer (Ethereal test inbox or any SMTP provider) |
-
----
-
-## Screenshots
-
-| Home | Product |
-|---|---|
-| ![Home](docs/screenshots/home.png) | ![Product](docs/screenshots/product.png) |
-
-| Cart | Admin dashboard |
-|---|---|
-| ![Cart](docs/screenshots/cart.png) | ![Admin](docs/screenshots/admin.png) |
 
 ---
 
