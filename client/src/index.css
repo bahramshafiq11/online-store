@@ -94,6 +94,13 @@ h1 { margin-bottom: 20px; }
 
 .back { display: inline-block; margin-bottom: 16px; color: #2563eb; }
 
+/* Star ratings */
+.rating { display: inline-flex; align-items: center; gap: 6px; }
+.stars { font-size: 1rem; letter-spacing: 1px; }
+.star { color: #d1d5db; }
+.star.on { color: #f59e0b; }
+.rating-text { color: #6b7280; font-size: 0.85rem; }
+
 /* Product page */
 .product-detail {
   display: grid;
@@ -104,10 +111,45 @@ h1 { margin-bottom: 20px; }
   border-radius: 10px;
 }
 .product-detail img { width: 100%; border-radius: 8px; }
+.product-detail h1 { margin-bottom: 8px; }
 .product-detail p { margin-bottom: 12px; line-height: 1.5; }
+.product-detail .price { margin-top: 12px; }
 
 .add-to-cart { display: flex; gap: 12px; margin-top: 16px; }
 .add-to-cart select { padding: 8px; border-radius: 6px; }
+
+/* Reviews */
+.reviews { margin-top: 32px; }
+.reviews h2 { margin-bottom: 16px; }
+.reviews-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.review {
+  background: white;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.review p { margin-top: 8px; line-height: 1.5; }
+
+.star-picker { display: flex; gap: 4px; }
+.star-picker button {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #d1d5db;
+  cursor: pointer;
+}
+.star-picker button.on { color: #f59e0b; }
 
 /* Buttons */
 .btn {
@@ -146,6 +188,7 @@ h1 { margin-bottom: 20px; }
   font-size: inherit;
   font-family: inherit;
 }
+.danger-link.small { font-size: 0.85rem; margin-top: 8px; }
 
 /* Cart */
 .badge {
@@ -198,7 +241,7 @@ h1 { margin-bottom: 20px; }
   font-size: 1.1rem;
 }
 
-/* Panels (checkout, order page, admin form) */
+/* Panels (checkout, order page, admin form, review form) */
 .panel { background: white; padding: 24px; border-radius: 10px; }
 .panel.narrow { max-width: 640px; }
 .panel h2 { font-size: 1.2rem; margin-bottom: 14px; }
@@ -321,6 +364,7 @@ h1 { margin-bottom: 20px; }
   .navbar nav { gap: 14px; font-size: 0.9rem; flex-wrap: wrap; }
   .product-detail { grid-template-columns: 1fr; }
   .cart-layout { grid-template-columns: 1fr; }
+  .reviews-layout { grid-template-columns: 1fr; }
   .cart-item { grid-template-columns: 60px 1fr; }
   .form-row { grid-template-columns: 1fr; }
 }

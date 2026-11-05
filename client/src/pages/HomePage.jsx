@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api";
+import Rating from "../components/Rating";
 
 export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -127,6 +128,11 @@ export default function HomePage() {
                   alt={p.name}
                 />
                 <h3>{p.name}</h3>
+                {p.numReviews > 0 ? (
+                  <Rating value={p.rating} text={`(${p.numReviews})`} />
+                ) : (
+                  <span className="muted">No reviews yet</span>
+                )}
                 <p className="price">Rs. {p.price.toLocaleString()}</p>
                 <p className={p.countInStock > 0 ? "stock" : "stock out"}>
                   {p.countInStock > 0 ? "In stock" : "Out of stock"}

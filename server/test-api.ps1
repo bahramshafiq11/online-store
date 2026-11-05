@@ -29,7 +29,7 @@ function CheckValue($name, $actual, $expected) {
   }
 }
 
-function Stock($id) { return (Call GET "/products/$id").Data.countInStock }
+function Product($id) { return (Call GET "/products/$id").Data }
 
 Write-Host "`n--- Products ---"
 Check "List products" (Call GET "/products") 200
@@ -67,9 +67,18 @@ $productId = $created.Data._id
 
 Check "Add product with missing fields (should fail)" (Call POST "/products" @{ name = "Incomplete" } $adminToken) 400
 Check "Update product as admin" (Call PUT "/products/$productId" @{ price = 150 } $adminToken) 200
+Check "Fake rating ignored on update" (Call PUT "/products/$productId" @{ rating = 5; numReviews = 99 } $adminToken) 200
+CheckValue "Rating still 0 after fake update" (Product $productId).numReviews 0
+
+Write-Host "`n--- Uploads ---"
 Check "Upload without token (should fail)" (Call POST "/upload") 401
 Check "Upload as normal user (should fail)" (Call POST "/upload" $null $userToken) 403
 Check "Upload as admin with no file (should fail)" (Call POST "/upload" $null $adminToken) 400
+
+Write-Host "`n--- Reviews before buying ---"
+$review = @{ rating = 5; comment = "Great product" }
+Check "Review without token (should fail)" (Call POST "/products/$productId/reviews" $review) 401
+Check "Review before buying (should fail)" (Call POST "/products/$productId/reviews" $review $userToken) 403
 
 Write-Host "`n--- Orders ---"
 $shipping = @{ fullName = "Test User"; address = "Test Street"; city = "Test City"; phone = "03000000000" }
@@ -78,7 +87,7 @@ $order = @{ orderItems = @(@{ product = $productId; quantity = 2 }); shippingAdd
 $placed = Call POST "/orders" $order $userToken
 Check "Place order for 2 items" $placed 201
 $orderId = $placed.Data._id
-CheckValue "Stock reduced from 5 to 3" (Stock $productId) 3
+CheckValue "Stock reduced from 5 to 3" (Product $productId).countInStock 3
 
 Check "Order with too many items (should fail)" (Call POST "/orders" @{ orderItems = @(@{ product = $productId; quantity = 999 }); shippingAddress = $shipping } $userToken) 400
 Check "Get my orders" (Call GET "/orders/mine" $null $userToken) 200
@@ -86,19 +95,34 @@ Check "Get one order as owner" (Call GET "/orders/$orderId" $null $userToken) 20
 Check "Get all orders as normal user (should fail)" (Call GET "/orders" $null $userToken) 403
 Check "Get all orders as admin" (Call GET "/orders" $null $adminToken) 200
 
+Write-Host "`n--- Reviews after buying ---"
+Check "Review with rating 6 (should fail)" (Call POST "/products/$productId/reviews" @{ rating = 6; comment = "Too high" } $userToken) 400
+Check "Review with no comment (should fail)" (Call POST "/products/$productId/reviews" @{ rating = 4; comment = "" } $userToken) 400
+
+$reviewed = Call POST "/products/$productId/reviews" $review $userToken
+Check "Review after buying" $reviewed 201
+$reviewId = $reviewed.Data.reviews[0]._id
+CheckValue "Average rating is 5" (Product $productId).rating 5
+CheckValue "Review count is 1" (Product $productId).numReviews 1
+
+Check "Review same product twice (should fail)" (Call POST "/products/$productId/reviews" $review $userToken) 400
+Check "Admin deletes the review" (Call DELETE "/products/$productId/reviews/$reviewId" $null $adminToken) 200
+CheckValue "Review count back to 0" (Product $productId).numReviews 0
+
 Write-Host "`n--- Cancelling ---"
 Check "Customer cancels pending order" (Call PUT "/orders/$orderId/cancel" $null $userToken) 200
-CheckValue "Stock restored to 5" (Stock $productId) 5
+CheckValue "Stock restored to 5" (Product $productId).countInStock 5
 Check "Cancel same order again (should fail)" (Call PUT "/orders/$orderId/cancel" $null $userToken) 400
+Check "Review after order cancelled (should fail)" (Call POST "/products/$productId/reviews" $review $userToken) 403
 
 Check "Admin un-cancels order (back to pending)" (Call PUT "/orders/$orderId/status" @{ status = "pending" } $adminToken) 200
-CheckValue "Stock reduced again to 3" (Stock $productId) 3
+CheckValue "Stock reduced again to 3" (Product $productId).countInStock 3
 
 Check "Admin marks order shipped" (Call PUT "/orders/$orderId/status" @{ status = "shipped" } $adminToken) 200
 Check "Customer cancels shipped order (should fail)" (Call PUT "/orders/$orderId/cancel" $null $userToken) 400
 
 Check "Admin cancels shipped order" (Call PUT "/orders/$orderId/status" @{ status = "cancelled" } $adminToken) 200
-CheckValue "Stock restored to 5 again" (Stock $productId) 5
+CheckValue "Stock restored to 5 again" (Product $productId).countInStock 5
 
 Write-Host "`n--- Cleanup ---"
 Check "Delete test product as admin" (Call DELETE "/products/$productId" $null $adminToken) 200
