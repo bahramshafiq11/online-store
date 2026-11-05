@@ -61,7 +61,11 @@ $testProduct = @{ name = "Test Product"; description = "Created by test script";
 Check "Add product without token (should fail)" (Call POST "/products" $testProduct) 401
 Check "Add product as normal user (should fail)" (Call POST "/products" $testProduct $userToken) 403
 
-$adminLogin = Call POST "/users/login" @{ email = "bahram@test.com"; password = "123456" }
+if (-not $env:ADMIN_EMAIL -or -not $env:ADMIN_PASSWORD) {
+  Write-Host "Set ADMIN_EMAIL and ADMIN_PASSWORD first (see README)." -ForegroundColor Yellow
+  exit 1
+}
+$adminLogin = Call POST "/users/login" @{ email = $env:ADMIN_EMAIL; password = $env:ADMIN_PASSWORD }
 Check "Admin login" $adminLogin 200
 $adminToken = $adminLogin.Data.token
 
