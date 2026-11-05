@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import api from "../api";
+import { useAuth } from "../context/AuthContext";
 
 export default function OrderPage() {
   const { id } = useParams();
   const location = useLocation();
   const justPlaced = location.state?.justPlaced;
+  const { user } = useAuth();
 
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     api
@@ -17,14 +20,30 @@ export default function OrderPage() {
       .catch((err) => setError(err.response?.data?.message || "Could not load order"));
   }, [id]);
 
+  const handleCancel = async () => {
+    if (!window.confirm("Cancel this order? This can't be undone.")) return;
+
+    setCancelling(true);
+    try {
+      const res = await api.put(`/orders/${id}/cancel`);
+      setOrder((prev) => ({ ...prev, status: res.data.status }));
+    } catch (err) {
+      alert(err.response?.data?.message || "Could not cancel order");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (error) return <p className="status error">{error}</p>;
   if (!order) return <p className="status">Loading order...</p>;
 
   const a = order.shippingAddress;
+  const isOwner = order.user?._id === user?._id;
+  const canCancel = isOwner && order.status === "pending";
 
   return (
     <div>
-      {justPlaced && (
+      {justPlaced && order.status === "pending" && (
         <p className="success-box">
           Order placed. Thank you! We'll call you on {a.phone} before delivery.
         </p>
@@ -69,6 +88,12 @@ export default function OrderPage() {
             <span>Total</span>
             <span>Rs. {order.totalPrice.toLocaleString()}</span>
           </div>
+
+          {canCancel && (
+            <button className="btn secondary full" onClick={handleCancel} disabled={cancelling}>
+              {cancelling ? "Cancelling..." : "Cancel order"}
+            </button>
+          )}
           <Link to="/my-orders" className="btn full">View all my orders</Link>
         </div>
       </div>

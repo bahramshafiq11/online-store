@@ -7,6 +7,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
+  const expired = searchParams.get("expired");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +31,9 @@ export default function LoginPage() {
   return (
     <div className="form-card">
       <h1>Login</h1>
+      {expired && !error && (
+        <p className="form-error">Your session expired. Log in again to continue.</p>
+      )}
       {error && <p className="form-error">{error}</p>}
 
       <form onSubmit={handleSubmit}>

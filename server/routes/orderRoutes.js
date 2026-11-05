@@ -6,6 +6,32 @@ import { protect, admin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// Put an order's items back into stock
+const restoreStock = async (order) => {
+  for (const item of order.orderItems) {
+    await Product.findByIdAndUpdate(item.product, {
+      $inc: { countInStock: item.quantity },
+    });
+  }
+};
+
+// Take an order's items out of stock again (returns an error message or null)
+const reduceStock = async (order) => {
+  for (const item of order.orderItems) {
+    const product = await Product.findById(item.product);
+    if (!product) return `A product in this order no longer exists`;
+    if (product.countInStock < item.quantity) {
+      return `Not enough stock for ${product.name}`;
+    }
+  }
+  for (const item of order.orderItems) {
+    await Product.findByIdAndUpdate(item.product, {
+      $inc: { countInStock: -item.quantity },
+    });
+  }
+  return null;
+};
+
 // Place an order (logged-in users)
 router.post("/", protect, async (req, res) => {
   const { orderItems, shippingAddress } = req.body;
@@ -45,13 +71,12 @@ router.post("/", protect, async (req, res) => {
       product: product._id,
       name: product.name,
       image: product.image,
-      price: product.price, // real price from the database
+      price: product.price,
       quantity,
     });
     totalPrice += product.price * quantity;
   }
 
-  // Reduce stock for each product
   for (const item of items) {
     await Product.findByIdAndUpdate(item.product, {
       $inc: { countInStock: -item.quantity },
@@ -91,7 +116,7 @@ router.get("/:id", protect, async (req, res) => {
   const order = await Order.findById(req.params.id).populate("user", "name email");
   if (!order) return res.status(404).json({ message: "Order not found" });
 
-  const isOwner = order.user._id.toString() === req.user._id.toString();
+  const isOwner = order.user?._id.toString() === req.user._id.toString();
   if (!isOwner && !req.user.isAdmin) {
     return res.status(403).json({ message: "Not allowed to view this order" });
   }
@@ -99,19 +124,60 @@ router.get("/:id", protect, async (req, res) => {
   res.json(order);
 });
 
+// Customer cancels their own pending order
+router.put("/:id/cancel", protect, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Invalid order ID" });
+  }
+
+  const order = await Order.findById(req.params.id);
+  if (!order) return res.status(404).json({ message: "Order not found" });
+
+  if (order.user.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: "Not allowed to cancel this order" });
+  }
+  if (order.status !== "pending") {
+    return res.status(400).json({ message: "Only pending orders can be cancelled" });
+  }
+
+  await restoreStock(order);
+  order.status = "cancelled";
+  await order.save();
+
+  res.json(order);
+});
+
 // Update order status (admin only)
 router.put("/:id/status", protect, admin, async (req, res) => {
   const allowed = ["pending", "shipped", "delivered", "cancelled"];
-  if (!allowed.includes(req.body.status)) {
+  const newStatus = req.body.status;
+
+  if (!allowed.includes(newStatus)) {
     return res.status(400).json({ message: "Invalid status" });
   }
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ message: "Invalid order ID" });
+  }
 
-  const order = await Order.findByIdAndUpdate(
-    req.params.id,
-    { status: req.body.status },
-    { returnDocument: "after" }
-  );
+  const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ message: "Order not found" });
+
+  const oldStatus = order.status;
+  if (oldStatus === newStatus) return res.json(order);
+
+  // Cancelling: put items back
+  if (newStatus === "cancelled") {
+    await restoreStock(order);
+  }
+
+  // Un-cancelling: take items out again, if there's enough stock
+  if (oldStatus === "cancelled") {
+    const problem = await reduceStock(order);
+    if (problem) return res.status(400).json({ message: problem });
+  }
+
+  order.status = newStatus;
+  await order.save();
   res.json(order);
 });
 
