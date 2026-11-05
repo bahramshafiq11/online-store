@@ -253,6 +253,7 @@ h1 { margin-bottom: 20px; }
 .summary-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
   margin-bottom: 8px;
   font-size: 0.95rem;
@@ -318,6 +319,24 @@ h1 { margin-bottom: 20px; }
 
 .image-preview { width: 100%; max-width: 240px; border-radius: 8px; }
 
+/* Payment options (checkout) */
+.pay-options { display: flex; flex-direction: column; gap: 10px; }
+.panel .pay-option {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 400;
+}
+.panel .pay-option.selected { border-color: #1f2937; background: #f9fafb; }
+.panel .pay-option input { padding: 0; margin-top: 3px; width: auto; }
+.pay-option strong { display: block; font-size: 0.95rem; }
+.pay-option .muted { display: block; margin-top: 2px; }
+
+/* Message boxes */
 .form-error {
   background: #fee2e2;
   color: #b91c1c;
@@ -329,6 +348,13 @@ h1 { margin-bottom: 20px; }
 .success-box {
   background: #dcfce7;
   color: #166534;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+.info-box {
+  background: #dbeafe;
+  color: #1e40af;
   padding: 12px;
   border-radius: 6px;
   margin-bottom: 16px;
@@ -371,6 +397,8 @@ h1 { margin-bottom: 20px; }
 .pill.shipped { background: #dbeafe; color: #1e40af; }
 .pill.delivered { background: #dcfce7; color: #166534; }
 .pill.cancelled { background: #fee2e2; color: #991b1b; }
+.pill.paid { background: #dcfce7; color: #166534; }
+.pill.unpaid { background: #fef3c7; color: #92400e; }
 
 /* Admin tabs */
 .admin-nav { display: flex; gap: 8px; margin-bottom: 20px; }

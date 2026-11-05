@@ -47,6 +47,7 @@ export default function AdminOrdersPage() {
                 <th>Customer</th>
                 <th>Date</th>
                 <th>Total</th>
+                <th>Payment</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -61,6 +62,15 @@ export default function AdminOrdersPage() {
                   </td>
                   <td>{new Date(o.createdAt).toLocaleDateString()}</td>
                   <td>Rs. {o.totalPrice.toLocaleString()}</td>
+                  <td>
+                    {o.paymentMethod === "Online Payment" ? (
+                      <span className={`pill ${o.isPaid ? "paid" : "unpaid"}`}>
+                        {o.isPaid ? "Paid" : "Unpaid"}
+                      </span>
+                    ) : (
+                      <span className="muted">COD</span>
+                    )}
+                  </td>
                   <td>
                     <select
                       value={o.status}

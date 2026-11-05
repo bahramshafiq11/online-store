@@ -4,23 +4,17 @@ import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import User from "../models/User.js";
 import { protect, admin } from "../middleware/authMiddleware.js";
-import { sendEmail } from "../utils/email.js";
+import { sendEmailInBackground } from "../utils/email.js";
 import { orderConfirmationEmail, statusUpdateEmail } from "../utils/emailTemplates.js";
 
 const router = express.Router();
 
-// Send an email in the background. If it fails, log it but don't break the request.
-const emailInBackground = (to, email) => {
-  if (!email) return;
-  sendEmail({ to, ...email }).catch((err) =>
-    console.error(`Email to ${to} failed:`, err.message)
-  );
-};
+const PAYMENT_METHODS = ["Cash on Delivery", "Online Payment"];
 
 // Email the customer when their order's status changes
 const sendStatusEmail = async (order) => {
   const user = await User.findById(order.user).select("name email");
-  if (user) emailInBackground(user.email, statusUpdateEmail(order, user));
+  if (user) sendEmailInBackground(user.email, statusUpdateEmail(order, user));
 };
 
 // Put an order's items back into stock
@@ -52,6 +46,11 @@ const reduceStock = async (order) => {
 // Place an order (logged-in users)
 router.post("/", protect, async (req, res) => {
   const { orderItems, shippingAddress } = req.body;
+  const paymentMethod = req.body.paymentMethod || "Cash on Delivery";
+
+  if (!PAYMENT_METHODS.includes(paymentMethod)) {
+    return res.status(400).json({ message: "Invalid payment method" });
+  }
 
   if (!orderItems || orderItems.length === 0) {
     return res.status(400).json({ message: "No items in order" });
@@ -104,10 +103,11 @@ router.post("/", protect, async (req, res) => {
     user: req.user._id,
     orderItems: items,
     shippingAddress: { fullName, address, city, phone },
+    paymentMethod,
     totalPrice,
   });
 
-  emailInBackground(req.user.email, orderConfirmationEmail(order, req.user));
+  sendEmailInBackground(req.user.email, orderConfirmationEmail(order, req.user));
 
   res.status(201).json(order);
 });
@@ -143,7 +143,7 @@ router.get("/:id", protect, async (req, res) => {
   res.json(order);
 });
 
-// Customer cancels their own pending order
+// Customer cancels their own pending, unpaid order
 router.put("/:id/cancel", protect, async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(400).json({ message: "Invalid order ID" });
@@ -158,12 +158,17 @@ router.put("/:id/cancel", protect, async (req, res) => {
   if (order.status !== "pending") {
     return res.status(400).json({ message: "Only pending orders can be cancelled" });
   }
+  if (order.isPaid) {
+    return res.status(400).json({
+      message: "Paid orders can't be cancelled here. Contact us for a refund.",
+    });
+  }
 
   await restoreStock(order);
   order.status = "cancelled";
   await order.save();
 
-  emailInBackground(req.user.email, statusUpdateEmail(order, req.user));
+  sendEmailInBackground(req.user.email, statusUpdateEmail(order, req.user));
 
   res.json(order);
 });

@@ -54,3 +54,11 @@ export const sendEmail = async ({ to, subject, html }) => {
 
   return info;
 };
+
+// Send without waiting. If it fails, log it but never break the request.
+export const sendEmailInBackground = (to, email) => {
+  if (!email) return;
+  sendEmail({ to, ...email }).catch((err) =>
+    console.error(`Email to ${to} failed:`, err.message)
+  );
+};

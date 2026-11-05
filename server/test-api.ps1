@@ -92,6 +92,7 @@ $placed = Call POST "/orders" $order $userToken
 Check "Place order for 2 items" $placed 201
 $orderId = $placed.Data._id
 CheckValue "Stock reduced from 5 to 3" (Product $productId).countInStock 3
+CheckValue "Default payment is Cash on Delivery" $placed.Data.paymentMethod "Cash on Delivery"
 
 Check "Order with too many items (should fail)" (Call POST "/orders" @{ orderItems = @(@{ product = $productId; quantity = 999 }); shippingAddress = $shipping } $userToken) 400
 Check "Get my orders" (Call GET "/orders/mine" $null $userToken) 200
@@ -127,6 +128,21 @@ Check "Customer cancels shipped order (should fail)" (Call PUT "/orders/$orderId
 
 Check "Admin cancels shipped order" (Call PUT "/orders/$orderId/status" @{ status = "cancelled" } $adminToken) 200
 CheckValue "Stock restored to 5 again" (Product $productId).countInStock 5
+
+Write-Host "`n--- Payments ---"
+Check "Payment config is public" (Call GET "/payments/config") 200
+Check "Order with unknown payment method (should fail)" (Call POST "/orders" @{ orderItems = @(@{ product = $productId; quantity = 1 }); shippingAddress = $shipping; paymentMethod = "Bitcoin" } $userToken) 400
+
+$online = Call POST "/orders" @{ orderItems = @(@{ product = $productId; quantity = 1 }); shippingAddress = $shipping; paymentMethod = "Online Payment" } $userToken
+Check "Place online payment order" $online 201
+$onlineId = $online.Data._id
+CheckValue "Online order starts unpaid" $online.Data.isPaid $false
+
+Check "Start payment without token (should fail)" (Call POST "/payments/$onlineId/start") 401
+Check "Start payment for someone else's order (should fail)" (Call POST "/payments/$onlineId/start" $null $adminToken) 403
+Check "Start online payment for a COD order (should fail)" (Call POST "/payments/$orderId/start" $null $userToken) 400
+Check "Customer cancels unpaid online order" (Call PUT "/orders/$onlineId/cancel" $null $userToken) 200
+Check "Start payment for cancelled order (should fail)" (Call POST "/payments/$onlineId/start" $null $userToken) 400
 
 Write-Host "`n--- Cleanup ---"
 Check "Delete test product as admin" (Call DELETE "/products/$productId" $null $adminToken) 200

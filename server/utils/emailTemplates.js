@@ -41,6 +41,11 @@ export const orderConfirmationEmail = (order, user) => {
   const firstName = escapeHtml(user.name.split(" ")[0]);
   const a = order.shippingAddress;
 
+  const nextStep =
+    order.paymentMethod === "Online Payment"
+      ? "We'll start preparing it as soon as your payment is confirmed."
+      : `We'll call you on ${escapeHtml(a.phone)} before delivery.`;
+
   const rows = order.orderItems
     .map(
       (i) => `
@@ -56,8 +61,7 @@ export const orderConfirmationEmail = (order, user) => {
     html: layout(`
       <h2 style="margin:0 0 8px">Thanks for your order, ${firstName}!</h2>
       <p style="margin:0 0 16px;color:#555">
-        We've received your order <strong>#${shortId(order)}</strong>.
-        We'll call you on ${escapeHtml(a.phone)} before delivery.
+        We've received your order <strong>#${shortId(order)}</strong>. ${nextStep}
       </p>
 
       <table style="width:100%;border-collapse:collapse;font-size:14px">
@@ -77,6 +81,23 @@ export const orderConfirmationEmail = (order, user) => {
       </p>
 
       <p style="margin:16px 0 0;color:#555">Payment: ${escapeHtml(order.paymentMethod)}</p>
+      ${orderButton(order)}
+    `),
+  };
+};
+
+export const paymentReceivedEmail = (order, user) => {
+  const firstName = escapeHtml(user.name.split(" ")[0]);
+
+  return {
+    subject: `Payment received for order #${shortId(order)}`,
+    html: layout(`
+      <h2 style="margin:0 0 8px">Payment received</h2>
+      <p style="margin:0 0 8px">Hi ${firstName},</p>
+      <p style="margin:0;color:#555">
+        We've received your payment of <strong>${formatRs(order.totalPrice)}</strong>
+        for order <strong>#${shortId(order)}</strong>. We're getting it ready now.
+      </p>
       ${orderButton(order)}
     `),
   };

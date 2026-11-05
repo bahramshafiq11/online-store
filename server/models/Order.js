@@ -18,7 +18,17 @@ const orderSchema = new mongoose.Schema(
       city: { type: String, required: true },
       phone: { type: String, required: true },
     },
-    paymentMethod: { type: String, default: "Cash on Delivery" },
+    paymentMethod: {
+      type: String,
+      enum: ["Cash on Delivery", "Online Payment"],
+      default: "Cash on Delivery",
+    },
+    isPaid: { type: Boolean, default: false },
+    paidAt: { type: Date },
+    paymentResult: {
+      tracker: { type: String },
+      reference: { type: String },
+    },
     totalPrice: { type: Number, required: true },
     status: {
       type: String,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useCart } from "../context/CartContext";
@@ -15,11 +15,22 @@ export default function CheckoutPage() {
     city: "",
     phone: "",
   });
+  const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
+  const [onlineAvailable, setOnlineAvailable] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
-  // Nothing to check out
-  if (cartItems.length === 0) return <Navigate to="/cart" replace />;
+  // Ask the backend if online payment is set up
+  useEffect(() => {
+    api
+      .get("/payments/config")
+      .then((res) => setOnlineAvailable(res.data.online))
+      .catch(() => {});
+  }, []);
+
+  // Nothing to check out (unless we're on our way to the payment page)
+  if (cartItems.length === 0 && !leaving) return <Navigate to="/cart" replace />;
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -28,17 +39,36 @@ export default function CheckoutPage() {
     setError("");
     setLoading(true);
 
+    let orderId;
     try {
       const res = await api.post("/orders", {
         orderItems: cartItems.map((i) => ({ product: i._id, quantity: i.qty })),
         shippingAddress: form,
+        paymentMethod,
       });
-      navigate(`/order/${res.data._id}`, { state: { justPlaced: true } });
-      clearCart();
+      orderId = res.data._id;
     } catch (err) {
       setError(err.response?.data?.message || "Could not place order. Try again.");
       setLoading(false);
+      return;
     }
+
+    setLeaving(true);
+
+    if (paymentMethod === "Online Payment") {
+      try {
+        const pay = await api.post(`/payments/${orderId}/start`);
+        clearCart();
+        window.location.href = pay.data.url; // go to Safepay
+      } catch {
+        clearCart();
+        navigate(`/order/${orderId}?payment=notstarted`);
+      }
+      return;
+    }
+
+    navigate(`/order/${orderId}`, { state: { justPlaced: true } });
+    clearCart();
   };
 
   return (
@@ -82,7 +112,41 @@ export default function CheckoutPage() {
           </div>
 
           <h2 className="section-gap">Payment</h2>
-          <p>Cash on Delivery</p>
+          <div className="pay-options">
+            <label
+              className={`pay-option ${paymentMethod === "Cash on Delivery" ? "selected" : ""}`}
+            >
+              <input
+                type="radio"
+                name="paymentMethod"
+                value="Cash on Delivery"
+                checked={paymentMethod === "Cash on Delivery"}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              />
+              <span>
+                <strong>Cash on Delivery</strong>
+                <span className="muted">Pay when your order arrives</span>
+              </span>
+            </label>
+
+            {onlineAvailable && (
+              <label
+                className={`pay-option ${paymentMethod === "Online Payment" ? "selected" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="Online Payment"
+                  checked={paymentMethod === "Online Payment"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
+                <span>
+                  <strong>Pay online</strong>
+                  <span className="muted">Card or wallet, through Safepay (test mode)</span>
+                </span>
+              </label>
+            )}
+          </div>
         </div>
 
         <div className="cart-summary">
@@ -98,7 +162,11 @@ export default function CheckoutPage() {
             <span>Rs. {totalPrice.toLocaleString()}</span>
           </div>
           <button className="btn full" disabled={loading}>
-            {loading ? "Placing order..." : "Place Order"}
+            {loading
+              ? "Please wait..."
+              : paymentMethod === "Online Payment"
+              ? "Continue to payment"
+              : "Place Order"}
           </button>
         </div>
       </form>
