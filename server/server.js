@@ -1,12 +1,11 @@
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
 import productRoutes from "./routes/productRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
-
-dotenv.config();
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 const app = express();
 app.use(cors());
@@ -19,6 +18,7 @@ app.get("/", (req, res) => {
 app.use("/api/products", productRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Error handler: turns crashes into clear JSON messages
 app.use((err, req, res, next) => {
@@ -30,6 +30,14 @@ app.use((err, req, res, next) => {
   }
   if (err.name === "CastError") {
     return res.status(400).json({ message: "Invalid ID" });
+  }
+  if (err.name === "MulterError") {
+    const message =
+      err.code === "LIMIT_FILE_SIZE" ? "Image must be smaller than 5 MB" : err.message;
+    return res.status(400).json({ message });
+  }
+  if (err.status) {
+    return res.status(err.status).json({ message: err.message });
   }
 
   res.status(500).json({ message: "Something went wrong on the server" });

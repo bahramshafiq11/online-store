@@ -67,6 +67,9 @@ $productId = $created.Data._id
 
 Check "Add product with missing fields (should fail)" (Call POST "/products" @{ name = "Incomplete" } $adminToken) 400
 Check "Update product as admin" (Call PUT "/products/$productId" @{ price = 150 } $adminToken) 200
+Check "Upload without token (should fail)" (Call POST "/upload") 401
+Check "Upload as normal user (should fail)" (Call POST "/upload" $null $userToken) 403
+Check "Upload as admin with no file (should fail)" (Call POST "/upload" $null $adminToken) 400
 
 Write-Host "`n--- Orders ---"
 $shipping = @{ fullName = "Test User"; address = "Test Street"; city = "Test City"; phone = "03000000000" }

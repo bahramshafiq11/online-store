@@ -12,6 +12,8 @@ const emptyForm = {
   countInStock: "",
 };
 
+const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+
 export default function ProductFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -20,9 +22,9 @@ export default function ProductFormPage() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
-  // When editing, load the existing product into the form
   useEffect(() => {
     if (!isEdit) return;
     api
@@ -43,6 +45,32 @@ export default function ProductFormPage() {
   }, [id, isEdit]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > MAX_SIZE) {
+      setError("Image must be smaller than 5 MB");
+      e.target.value = "";
+      return;
+    }
+
+    const data = new FormData();
+    data.append("image", file);
+
+    setError("");
+    setUploading(true);
+    try {
+      const res = await api.post("/upload", data);
+      setForm((prev) => ({ ...prev, image: res.data.url }));
+    } catch (err) {
+      setError(err.response?.data?.message || "Image upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,7 +160,18 @@ export default function ProductFormPage() {
           </label>
 
           <label>
-            Image URL
+            Upload image
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={uploading}
+            />
+          </label>
+          {uploading && <p className="muted">Uploading image...</p>}
+
+          <label>
+            Or paste an image URL
             <input
               name="image"
               value={form.image}
@@ -140,10 +179,11 @@ export default function ProductFormPage() {
               placeholder="https://..."
             />
           </label>
+
           {form.image && <img className="image-preview" src={form.image} alt="Preview" />}
 
           <div className="form-actions">
-            <button className="btn" disabled={saving}>
+            <button className="btn" disabled={saving || uploading}>
               {saving ? "Saving..." : isEdit ? "Save changes" : "Add product"}
             </button>
             <Link to="/admin/products" className="btn secondary">Cancel</Link>
