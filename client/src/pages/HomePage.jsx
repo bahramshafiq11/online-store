@@ -37,7 +37,7 @@ export default function HomePage() {
           const next = new URLSearchParams(prev);
           if (value) next.set("search", value);
           else next.delete("search");
-          next.delete("page"); // new search starts at page 1
+          next.delete("page");
           return next;
         },
         { replace: true }
@@ -76,8 +76,7 @@ export default function HomePage() {
     };
   }, [search, category, page]);
 
-  const handleCategory = (e) => {
-    const value = e.target.value;
+  const selectCategory = (value) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (value) next.set("category", value);
@@ -94,7 +93,7 @@ export default function HomePage() {
       else next.delete("page");
       return next;
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
   };
 
   const clearFilters = () => {
@@ -103,68 +102,132 @@ export default function HomePage() {
   };
 
   const filtering = search || category;
+  const showHero = !filtering && page === 1;
 
   return (
     <div>
-      <h1>{filtering ? "Search results" : "Latest Products"}</h1>
-
-      <div className="filters">
-        <input
-          type="search"
-          placeholder="Search products..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-        />
-        <select value={category} onChange={handleCategory}>
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        {filtering && (
-          <button className="btn secondary" onClick={clearFilters}>
-            Clear
-          </button>
-        )}
-      </div>
-
-      {loading ? (
-        <p className="status">Loading products...</p>
-      ) : error ? (
-        <p className="status error">{error}</p>
-      ) : products.length === 0 ? (
-        <p className="status">No products match your search.</p>
-      ) : (
-        <>
-          <p className="muted result-count">
-            {total} product{total !== 1 && "s"}
-            {pages > 1 && ` · Page ${page} of ${pages}`}
-          </p>
-
-          <div className="product-grid">
-            {products.map((p) => (
-              <Link to={`/product/${p._id}`} key={p._id} className="product-card">
-                <img
-                  src={p.image || "https://placehold.co/400x300?text=No+Image"}
-                  alt={p.name}
-                />
-                <h3>{p.name}</h3>
-                {p.numReviews > 0 ? (
-                  <Rating value={p.rating} text={`(${p.numReviews})`} />
-                ) : (
-                  <span className="muted">No reviews yet</span>
-                )}
-                <p className="price">Rs. {p.price.toLocaleString()}</p>
-                <p className={p.countInStock > 0 ? "stock" : "stock out"}>
-                  {p.countInStock > 0 ? "In stock" : "Out of stock"}
-                </p>
-              </Link>
-            ))}
+      {showHero && (
+        <section className="hero">
+          <div className="hero-text">
+            <span className="eyebrow">The MyStore collection</span>
+            <h1 className="hero-title">
+              Everyday things, <em>thoughtfully</em> chosen.
+            </h1>
+            <p className="hero-sub">
+              From tech to home goods, find quality products at honest prices, delivered
+              straight to your door.
+            </p>
+            <div className="hero-actions">
+              <a href="#products" className="btn">Shop now</a>
+              <Link to="/my-orders" className="btn secondary">Track an order</Link>
+            </div>
           </div>
 
-          <Pagination page={page} pages={pages} onChange={changePage} />
-        </>
+          <div className="hero-art" aria-hidden="true">
+            <div className="hero-block">
+              <span className="hero-monogram">M</span>
+            </div>
+            <div className="hero-chip chip-1">✓ Cash on Delivery</div>
+            <div className="hero-chip chip-2">✓ Secure card payments</div>
+            <div className="hero-chip chip-3">✓ Order updates by email</div>
+          </div>
+        </section>
       )}
+
+      <section id="products" className="products-section">
+        <div className="section-head">
+          <div>
+            <h2>{filtering ? "Search results" : "Latest products"}</h2>
+            {!loading && !error && (
+              <p className="muted">
+                {total} product{total !== 1 && "s"}
+                {pages > 1 && ` · Page ${page} of ${pages}`}
+              </p>
+            )}
+          </div>
+
+          <div className="filters">
+            <input
+              type="search"
+              placeholder="Search products..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              aria-label="Search products"
+            />
+            {filtering && (
+              <button className="btn secondary" onClick={clearFilters}>
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {categories.length > 0 && (
+          <div className="chips" role="group" aria-label="Categories">
+            <button
+              className={`chip ${!category ? "active" : ""}`}
+              onClick={() => selectCategory("")}
+            >
+              All
+            </button>
+            {categories.map((c) => (
+              <button
+                key={c}
+                className={`chip ${category === c ? "active" : ""}`}
+                onClick={() => selectCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {loading ? (
+          <p className="status">Loading products...</p>
+        ) : error ? (
+          <p className="status error">{error}</p>
+        ) : products.length === 0 ? (
+          <div className="empty">
+            <p>No products match your search.</p>
+            <button className="btn secondary" onClick={clearFilters}>Show all products</button>
+          </div>
+        ) : (
+          <>
+            <div className="product-grid">
+              {products.map((p) => (
+                <Link to={`/product/${p._id}`} key={p._id} className="product-card">
+                  <div className="product-media">
+                    <img
+                      src={p.image || "https://placehold.co/400x300?text=No+Image"}
+                      alt={p.name}
+                      loading="lazy"
+                    />
+                    <span className="tag">{p.category}</span>
+                    {p.countInStock === 0 && <span className="sold-out">Sold out</span>}
+                  </div>
+
+                  <div className="product-body">
+                    <h3>{p.name}</h3>
+                    {p.numReviews > 0 ? (
+                      <Rating value={p.rating} text={`(${p.numReviews})`} />
+                    ) : (
+                      <span className="muted">No reviews yet</span>
+                    )}
+                    <div className="product-foot">
+                      <span className="price">Rs. {p.price.toLocaleString()}</span>
+                      {p.countInStock > 0 && p.countInStock <= 5 && (
+                        <span className="low-stock">Only {p.countInStock} left</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <Pagination page={page} pages={pages} onChange={changePage} />
+          </>
+        )}
+      </section>
     </div>
   );
 }

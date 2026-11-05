@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -14,22 +14,31 @@ export default function Navbar() {
 
   return (
     <header className="navbar">
-      <Link to="/" className="logo">MyStore</Link>
-      <nav>
-        <Link to="/cart">
-          Cart {itemCount > 0 && <span className="badge">{itemCount}</span>}
+      <div className="nav-inner">
+        <Link to="/" className="logo">
+          <span className="logo-mark">M</span>
+          MyStore
         </Link>
-        {user ? (
-          <>
-            {user.isAdmin && <Link to="/admin/products">Admin</Link>}
-            <Link to="/my-orders">My Orders</Link>
-            <span>Hi, {user.name.split(" ")[0]}</span>
-            <button className="link-btn" onClick={handleLogout}>Logout</button>
-          </>
-        ) : (
-          <Link to="/login">Login</Link>
-        )}
-      </nav>
+
+        <nav>
+          {user?.isAdmin && <NavLink to="/admin/products">Admin</NavLink>}
+          {user && <NavLink to="/my-orders">My Orders</NavLink>}
+
+          {user ? (
+            <>
+              <span className="nav-user">Hi, {user.name.split(" ")[0]}</span>
+              <button className="link-btn" onClick={handleLogout}>Logout</button>
+            </>
+          ) : (
+            <NavLink to="/login">Login</NavLink>
+          )}
+
+          <Link to="/cart" className="nav-cart">
+            Cart
+            {itemCount > 0 && <span className="badge">{itemCount}</span>}
+          </Link>
+        </nav>
+      </div>
     </header>
   );
 }

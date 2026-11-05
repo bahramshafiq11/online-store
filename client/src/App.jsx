@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import RequireAuth from "./components/RequireAuth";
 import RequireAdmin from "./components/RequireAdmin";
 import HomePage from "./pages/HomePage";
@@ -16,7 +17,7 @@ import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 
 export default function App() {
   return (
-    <>
+    <div className="app">
       <Navbar />
       <main className="container">
         <Routes>
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="*" element={<p className="status">Page not found</p>} />
         </Routes>
       </main>
-    </>
+      <Footer />
+    </div>
   );
 }
