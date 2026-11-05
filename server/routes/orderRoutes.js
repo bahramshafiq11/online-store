@@ -2,9 +2,26 @@ import express from "express";
 import mongoose from "mongoose";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
+import User from "../models/User.js";
 import { protect, admin } from "../middleware/authMiddleware.js";
+import { sendEmail } from "../utils/email.js";
+import { orderConfirmationEmail, statusUpdateEmail } from "../utils/emailTemplates.js";
 
 const router = express.Router();
+
+// Send an email in the background. If it fails, log it but don't break the request.
+const emailInBackground = (to, email) => {
+  if (!email) return;
+  sendEmail({ to, ...email }).catch((err) =>
+    console.error(`Email to ${to} failed:`, err.message)
+  );
+};
+
+// Email the customer when their order's status changes
+const sendStatusEmail = async (order) => {
+  const user = await User.findById(order.user).select("name email");
+  if (user) emailInBackground(user.email, statusUpdateEmail(order, user));
+};
 
 // Put an order's items back into stock
 const restoreStock = async (order) => {
@@ -86,9 +103,11 @@ router.post("/", protect, async (req, res) => {
   const order = await Order.create({
     user: req.user._id,
     orderItems: items,
-    shippingAddress,
+    shippingAddress: { fullName, address, city, phone },
     totalPrice,
   });
+
+  emailInBackground(req.user.email, orderConfirmationEmail(order, req.user));
 
   res.status(201).json(order);
 });
@@ -144,6 +163,8 @@ router.put("/:id/cancel", protect, async (req, res) => {
   order.status = "cancelled";
   await order.save();
 
+  emailInBackground(req.user.email, statusUpdateEmail(order, req.user));
+
   res.json(order);
 });
 
@@ -165,12 +186,10 @@ router.put("/:id/status", protect, admin, async (req, res) => {
   const oldStatus = order.status;
   if (oldStatus === newStatus) return res.json(order);
 
-  // Cancelling: put items back
   if (newStatus === "cancelled") {
     await restoreStock(order);
   }
 
-  // Un-cancelling: take items out again, if there's enough stock
   if (oldStatus === "cancelled") {
     const problem = await reduceStock(order);
     if (problem) return res.status(400).json({ message: problem });
@@ -178,6 +197,9 @@ router.put("/:id/status", protect, admin, async (req, res) => {
 
   order.status = newStatus;
   await order.save();
+
+  await sendStatusEmail(order);
+
   res.json(order);
 });
 
